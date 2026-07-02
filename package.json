@@ -1,0 +1,45 @@
+{
+  "name": "pilot-ai",
+  "version": "0.1.0",
+  "description": "AI infrastructure platform — CLI untuk vibe coding yang auto-rotasi 9 provider AI gratis, tanpa kehilangan memory.",
+  "type": "module",
+  "main": "./dist/cli/index.js",
+  "bin": {
+    "pilot": "./bin/pilot.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "start": "node bin/pilot.js",
+    "test": "vitest run",
+    "lint": "eslint src/",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\""
+  },
+  "dependencies": {
+    "@inkjs/ui": "^2.0.0",
+    "chalk": "^5.3.0",
+    "cosmiconfig": "^9.0.0",
+    "figures": "^6.1.0",
+    "ink": "^5.1.0",
+    "ink-spinner": "^5.0.0",
+    "react": "^18.2.0",
+    "strip-ansi": "^7.1.0",
+    "undici": "^6.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": ["ai", "cli", "vibe-coding", "coding-assistant", "multi-provider"],
+  "license": "MIT"
+}

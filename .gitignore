@@ -1,0 +1,24 @@
+GOALS.md
+STRUCTURE.md
+PROVIDERS.md
+MEMORY.md
+AGENT.md
+CLI_UI.md
+COMMANDS.md
+ROADMAP.md
+CONTRIBUTING.md
+PROMPT_MVP.md
+PROMPT_PRODUCTION.md
+
+# Build and dependencies
+node_modules/
+dist/
+
+# Environment variables
+.env
+.env.*
+.env.local
+
+# Project specific
+system-project/
+.pilot-example/
