@@ -72,6 +72,39 @@ Dibangun dengan `ink` (React untuk terminal) — ada spinner, progress bar, diff
 
 ---
 
+## 🆕 What's New in v1.0.0 (Stable Release)
+
+- **First stable release!** Pilot v1.0.0 is production-ready. Breaking changes will follow strict semantic versioning.
+- **60%+ Test Coverage**: All core commands (`explain`, `fix`, `plugin`) and infrastructure modules are covered by automated tests.
+- **Official Documentation Site**: Dedicated docs site built with VitePress — Getting Started, Commands Reference, Plugin Guide, Configuration, dan FAQ.
+- **npm Distribution**: Install Pilot globally via `npm install -g pilot-ai-cli` untuk pengalaman terbaik.
+- **CI/CD**: Automated testing, documentation deployment, and npm publishing via GitHub Actions with provenance.
+
+---
+
+## Previous Releases
+
+<details>
+<summary>v0.3.0 — Developer Experience</summary>
+
+- **`pilot explain <file>`**: Penjelasan kode otomatis.
+- **`pilot fix "<error>"`**: Diagnosis dan perbaikan error AI-powered.
+- **Plugin System**: Custom provider dan command via plugin.
+
+</details>
+
+<details>
+<summary>v0.2.0 — Smarter</summary>
+
+- **Project Memory**: Pilot mempelajari tech stack proyekmu.
+- **Smart Token Compression**: Auto-compress context panjang.
+- **One-Shot Mode**: `pilot "prompt"` tanpa UI interaktif.
+- **Better Diff View**: Tampilan diff bergaya Git.
+
+</details>
+
+---
+
 ## 🌐 9 Provider yang Didukung
 
 | # | Provider | Model Terbaik | Free Limit |
@@ -230,7 +263,7 @@ Semua data disimpan **lokal di komputermu**. Pilot tidak mengirim apapun ke serv
 
 ## 🗺️ Roadmap
 
-### v0.1.0 — MVP CLI *(sekarang)*
+### v0.1.0 — MVP CLI
 
 - [x] Multi-provider smart router dengan auto-switch
 - [x] Persistent memory — context tidak hilang saat model berganti
@@ -239,18 +272,24 @@ Semua data disimpan **lokal di komputermu**. Pilot tidak mengirim apapun ke serv
 - [x] Beautiful terminal UI dengan ink
 - [x] Unified onboarding flow — satu perintah `pilot`
 
-### v0.2.0 — Smarter
+### v0.2.0 — Smarter *(sekarang)*
 
-- [ ] Project memory — Pilot ingat tech stack dan conventions project kamu
-- [ ] Token compression untuk context window yang sangat panjang
-- [ ] `pilot "prompt"` one-shot mode tanpa masuk interactive
-- [ ] Better diff view dengan syntax highlighting
+- [x] Project memory — Pilot ingat tech stack dan conventions project kamu
+- [x] Token compression untuk context window yang sangat panjang
+- [x] `pilot "prompt"` one-shot mode tanpa masuk interactive
+- [x] Better diff view dengan syntax highlighting
 
-### v0.3.0 — Developer Experience
+### v0.3.0 — Developer Experience *(sekarang)*
 
-- [ ] `pilot explain [file]` — jelaskan kode di file tertentu
-- [ ] `pilot fix "error message"` — paste error, Pilot langsung fix
-- [ ] Plugin system — tambah provider sendiri
+- [x] `pilot explain [file]` — jelaskan kode di file tertentu
+- [x] `pilot fix "error message"` — paste error, Pilot langsung fix
+- [x] Plugin system — tambah provider sendiri
+
+### v0.4.0 — Developer Experience Part 2
+
+- [ ] Implementasi auto-fix sungguhan dengan flag `--apply`
+- [ ] Multi-file context otomatis untuk explain
+- [ ] Plugin marketplace / registry publik
 
 ### v1.0.0 — Stable
 

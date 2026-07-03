@@ -18,55 +18,81 @@ export function estimateMessagesTokens(messages: Message[]): number {
   return total
 }
 
-/**
- * Kompres history jika terlalu panjang.
- *
- * Strategy:
- * 1. Pertahankan system prompt (pesan pertama jika role=system)
- * 2. Pertahankan 5 pesan terakhir (selalu full)
- * 3. Summarize pesan lama jadi 1 blok
- */
-export function compressHistory(
-  messages: Message[],
-  contextWindow: number,
-): Message[] {
-  const maxTokens = Math.floor(contextWindow * 0.8)
-  const currentTokens = estimateMessagesTokens(messages)
+export const COMPRESSION_THRESHOLD = 0.75
 
-  // Belum perlu compress
-  if (currentTokens <= maxTokens) {
-    return messages
+export async function compressIfNeeded(
+  messages: Message[],
+  contextWindow: number
+): Promise<{ messages: Message[], wasCompressed: boolean, savedTokens: number }> {
+  const maxTokens = Math.floor(contextWindow * COMPRESSION_THRESHOLD)
+  const initialTokens = estimateMessagesTokens(messages)
+
+  if (initialTokens < maxTokens) {
+    return { messages, wasCompressed: false, savedTokens: 0 }
   }
 
-  // Pisahkan system prompt
+  // Level 1: Trim (tanpa AI call)
   const systemMessages = messages.filter((m) => m.role === 'system')
   const nonSystemMessages = messages.filter((m) => m.role !== 'system')
 
-  // Pertahankan 5 pesan terakhir
-  const recentCount = Math.min(5, nonSystemMessages.length)
+  const recentCount = Math.min(8, nonSystemMessages.length)
   const recentMessages = nonSystemMessages.slice(-recentCount)
   const oldMessages = nonSystemMessages.slice(0, -recentCount)
 
   if (oldMessages.length === 0) {
-    return messages
+    return { messages, wasCompressed: false, savedTokens: 0 }
   }
 
-  // Summarize pesan lama
-  const summaryParts: string[] = []
-  for (const msg of oldMessages) {
-    const roleLabel = msg.role === 'user' ? 'User' : 'Assistant'
-    const truncated =
-      msg.content.length > 200 ? msg.content.slice(0, 200) + '...' : msg.content
-    summaryParts.push(`[${roleLabel}]: ${truncated}`)
+  const level1Messages = [...systemMessages, ...recentMessages]
+  const level1Tokens = estimateMessagesTokens(level1Messages)
+
+  if (level1Tokens < maxTokens) {
+    return { 
+      messages: level1Messages, 
+      wasCompressed: true, 
+      savedTokens: initialTokens - level1Tokens 
+    }
   }
 
-  const summaryMessage: Message = {
-    role: 'system',
-    content: `[COMPRESSED HISTORY - ${oldMessages.length} pesan sebelumnya]\n${summaryParts.join('\n')}`,
-    timestamp: new Date().toISOString(),
-  }
+  // Level 2: Summarize (pakai AI call)
+  const { sendWithFallback } = await import('../router/fallback.js')
+  
+  const textToSummarize = oldMessages.map(m => `[${m.role.toUpperCase()}]: ${m.content.slice(0, 500)}`).join('\n\n')
+  
+  const summarizePrompt = `Summarize percakapan berikut menjadi 3-5 kalimat singkat.
+Wajib pertahankan: nama file, nama function, keputusan teknis.
+Format: paragraph singkat, bukan bullet points.
 
-  return [...systemMessages, summaryMessage, ...recentMessages]
+Percakapan:
+${textToSummarize}`
+
+  try {
+    const response = await sendWithFallback({
+      messages: [{ role: 'user', content: summarizePrompt, timestamp: new Date().toISOString() }],
+      temperature: 0.3
+    })
+    
+    const summaryMessage: Message = {
+      role: 'assistant',
+      content: `[Context sebelumnya: ${response.content}]`,
+      timestamp: new Date().toISOString()
+    }
+    
+    const level2Messages = [...systemMessages, summaryMessage, ...recentMessages]
+    const level2Tokens = estimateMessagesTokens(level2Messages)
+    
+    return {
+      messages: level2Messages,
+      wasCompressed: true,
+      savedTokens: initialTokens - level2Tokens
+    }
+  } catch (err) {
+    return {
+      messages: level1Messages,
+      wasCompressed: true,
+      savedTokens: initialTokens - level1Tokens
+    }
+  }
 }
 
 /**

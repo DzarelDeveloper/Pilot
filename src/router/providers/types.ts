@@ -21,6 +21,7 @@ export interface ProviderConfig {
   priority: number
   status: ProviderStatus
   rateLimitResetAt?: Date
+  isPlugin?: boolean
 }
 
 export interface ProviderRequest {

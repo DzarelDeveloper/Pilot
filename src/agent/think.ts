@@ -3,6 +3,7 @@ import path from 'node:path'
 import { sendWithFallback } from '../router/fallback.js'
 import { buildContext } from '../memory/index.js'
 import { scanProject } from '../tools/scanProject.js'
+import { learnFromProject } from '../memory/projectMemory.js'
 import type { Session, Message } from '../memory/types.js'
 import type { ThinkResult } from './types.js'
 
@@ -34,9 +35,26 @@ export async function thinkPhase(
   // 3. File yang sudah pernah dibuat Pilot
   const filesCreated = session.filesCreated.join(', ')
 
+  // 4. Project Knowledge
+  const projectKnowledge = await learnFromProject(projectPath)
+  const filesCreatedByPilotStr = projectKnowledge.filesCreatedByPilot.map(f => f.path + ' — ' + f.description).join('\n')
+  const filesEditedByPilotStr = projectKnowledge.filesEditedByPilot.map(f => f.path).join('\n')
+
   const systemPrompt = `
 Kamu adalah Pilot, AI coding agent. 
 Tugasmu sekarang: PAHAMI request user dan konteks project. Jangan buat kode dulu.
+
+Konteks project yang sudah diketahui:
+Tech Stack: ${projectKnowledge.techStack.framework} · ${projectKnowledge.techStack.language} · ${projectKnowledge.techStack.packageManager}
+Conventions: ${projectKnowledge.conventions.namingFiles} files, ${projectKnowledge.conventions.importStyle} imports, ${projectKnowledge.conventions.semicolons ? 'semicolons' : 'no semicolons'}
+
+File yang sudah pernah Pilot buat:
+${filesCreatedByPilotStr || 'Belum ada'}
+
+File yang sudah pernah Pilot edit:
+${filesEditedByPilotStr || 'Belum ada'}
+
+Gunakan info ini untuk membuat kode yang konsisten dengan project.
 
 Project context:
 package.json:

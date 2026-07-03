@@ -8,6 +8,7 @@ import { Summary, type SummaryProps } from '../ui/Summary.js'
 import { thinkPhase, planPhase, executeStep, buildSummaryProps } from '../../agent/index.js'
 import type { ThinkResult, PlanResult } from '../../agent/types.js'
 import { getOrCreateSession, appendMessage } from '../../memory/index.js'
+import { updateAfterExecute } from '../../memory/projectMemory.js'
 import { getLastSwitch } from '../../router/fallback.js'
 
 type AppState = 
@@ -31,7 +32,8 @@ export function CodeApp({ prompt, projectPath, onDone }: { prompt: string; proje
   const [progressSteps, setProgressSteps] = useState<ProgressStep[]>([])
   
   const [diffFile, setDiffFile] = useState('')
-  const [diffContent, setDiffContent] = useState('')
+  const [diffOriginal, setDiffOriginal] = useState('')
+  const [diffNewContent, setDiffNewContent] = useState('')
   const [deleteFile, setDeleteFile] = useState('')
   const [commandStr, setCommandStr] = useState('')
   
@@ -39,7 +41,7 @@ export function CodeApp({ prompt, projectPath, onDone }: { prompt: string; proje
 
   // Promise resolvers for blocking user input
   const resolveApproval = useRef<(value: boolean | 'edit') => void>()
-  const resolveExecutionApproval = useRef<(value: boolean) => void>()
+  const resolveExecutionApproval = useRef<(value: boolean | 'quit') => void>()
 
   useEffect(() => {
     async function run() {
@@ -105,11 +107,12 @@ export function CodeApp({ prompt, projectPath, onDone }: { prompt: string; proje
                 return next
               })
             },
-            onRequestDiffApproval: async (file, diff) => {
+            onRequestDiffApproval: async (file, original, newContent) => {
               setDiffFile(file)
-              setDiffContent(diff)
+              setDiffOriginal(original)
+              setDiffNewContent(newContent)
               setState('diff-approval')
-              const result = await new Promise<boolean>((resolve) => {
+              const result = await new Promise<boolean | 'quit'>((resolve) => {
                 resolveExecutionApproval.current = resolve
               })
               setState('executing')
@@ -118,26 +121,36 @@ export function CodeApp({ prompt, projectPath, onDone }: { prompt: string; proje
             onRequestCommandApproval: async (command) => {
               setCommandStr(command)
               setState('command-approval')
-              const result = await new Promise<boolean>((resolve) => {
+              const result = await new Promise<boolean | 'quit'>((resolve) => {
                 resolveExecutionApproval.current = resolve
               })
               setState('executing')
-              return result
+              return result as boolean
             },
             onRequestDeleteApproval: async (file) => {
               setDeleteFile(file)
               setState('delete-approval')
-              const result = await new Promise<boolean>((resolve) => {
+              const result = await new Promise<boolean | 'quit'>((resolve) => {
                 resolveExecutionApproval.current = resolve
               })
               setState('executing')
-              return result
+              return result as boolean
             },
           })
           i++
         }
 
         // Phase 5: Summarize
+        const createdFiles = progressSteps.filter(s => s.action === 'create' && s.status === 'done').map(s => {
+          const step = planRes.steps.find(ps => ps.id === s.id)
+          return { path: s.file, description: step?.reason || '' }
+        })
+        const editedFiles = progressSteps.filter(s => s.action === 'edit' && s.status === 'done').map(s => {
+          const step = planRes.steps.find(ps => ps.id === s.id)
+          return { path: s.file, description: step?.reason || '' }
+        })
+        await updateAfterExecute(projectPath, createdFiles, editedFiles)
+
         const switchInfo = getLastSwitch()
         const durationMs = Date.now() - startTime
         
@@ -183,6 +196,7 @@ export function CodeApp({ prompt, projectPath, onDone }: { prompt: string; proje
     } else if (state === 'diff-approval' || state === 'delete-approval' || state === 'command-approval') {
       if (input.toLowerCase() === 'y' || key.return) resolveExecutionApproval.current?.(true)
       if (input.toLowerCase() === 'n') resolveExecutionApproval.current?.(false)
+      if (input.toLowerCase() === 'q') resolveExecutionApproval.current?.('quit')
     }
   })
 
@@ -230,7 +244,7 @@ export function CodeApp({ prompt, projectPath, onDone }: { prompt: string; proje
         <Text> </Text>
         
         {state === 'diff-approval' && (
-          <DiffView filePath={diffFile} diff={diffContent} />
+          <DiffView filePath={diffFile} original={diffOriginal} newContent={diffNewContent} />
         )}
         
         {state === 'command-approval' && (

@@ -78,7 +78,7 @@ export async function executeStep(
   plan: PlanResult,
   hooks: {
     onProgressUpdate: (update: Partial<ProgressStep>) => void
-    onRequestDiffApproval: (file: string, diff: string) => Promise<boolean>
+    onRequestDiffApproval: (file: string, original: string, newContent: string) => Promise<boolean | 'quit'>
     onRequestCommandApproval: (command: string) => Promise<boolean>
     onRequestDeleteApproval: (file: string) => Promise<boolean>
   }
@@ -119,8 +119,13 @@ export async function executeStep(
         const dryRunEdit = await editFile(absolutePath + '.tmp_pilot', newCode, projectPath)
         tmpCreated = true
 
-        const approved = await hooks.onRequestDiffApproval(step.file, dryRunEdit.diff)
+        const approved = await hooks.onRequestDiffApproval(step.file, original, newCode)
         
+        if (approved === 'quit') {
+          hooks.onProgressUpdate({ status: 'done', detail: '(dibatalkan)' })
+          throw new Error('Eksekusi dibatalkan oleh user.')
+        }
+
         if (approved) {
           const result = await editFile(absolutePath, newCode, projectPath)
           

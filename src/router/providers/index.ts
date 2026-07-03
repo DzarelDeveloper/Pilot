@@ -23,15 +23,34 @@ export const allProviders: ProviderConfig[] = [
   ollamaConfig,
 ]
 
+import { getProviderPlugins } from '../../plugins/manager.js'
+
 /**
  * Get providers with their status resolved from config.
- * This is lazy — only called when needed.
+ * Includes dynamically loaded provider plugins.
  */
 export function getResolvedProviders(): ProviderConfig[] {
-  return allProviders.map((p) => ({
+  const builtIns = allProviders.map((p) => ({
     ...p,
     status: isProviderConfigured(p.name) ? 'active' as const : 'unconfigured' as const,
   }))
+
+  const pluginProviders = getProviderPlugins().map((p) => ({
+    name: p.manifest.name,
+    displayName: p.manifest.name,
+    baseUrl: '', // Not strictly needed for plugins if they handle it
+    model: 'plugin-model',
+    freeLimit: 'Custom',
+    contextWindow: 128000,
+    envKey: null,
+    format: 'openai' as const,
+    isLocal: true, // Treat as local to avoid strict API key checks
+    priority: 99, // default lowest priority unless overridden
+    status: 'active' as const,
+    isPlugin: true,
+  }))
+
+  return [...builtIns, ...pluginProviders]
 }
 
 export type { ProviderConfig } from './types.js'

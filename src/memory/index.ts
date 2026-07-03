@@ -10,7 +10,6 @@ import {
 import {
   estimateTokens as _estimateTokens,
   estimateMessagesTokens,
-  compressHistory,
   buildSystemPrompt,
 } from './compressor.js'
 
@@ -69,11 +68,6 @@ export function buildContext(
   }
 
   const allMessages = [systemMessage, ...session.messages]
-
-  // Compress if needed
-  if (estimateMessagesTokens(allMessages) > contextWindow * 0.8) {
-    return compressHistory(allMessages, contextWindow)
-  }
 
   return allMessages
 }

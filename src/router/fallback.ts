@@ -3,6 +3,9 @@ import type { Message } from '../memory/types.js'
 import { getProvidersByPriority } from './selector.js'
 import { detectOllama } from './providers/ollama.js'
 import { getProviderApiKey, getCloudflareAccountId } from '../config/index.js'
+import { compressIfNeeded } from '../memory/compressor.js'
+import { logger } from '../utils/logger.js'
+import { getProviderPlugins } from '../plugins/manager.js'
 
 export class PilotError extends Error {
   constructor(message: string) {
@@ -228,8 +231,8 @@ export async function sendWithFallback(request: ProviderRequest): Promise<Provid
       continue
     }
 
-    // Ollama: check if running
-    if (provider.isLocal) {
+    // Ollama: check if running (only if not a plugin)
+    if (provider.isLocal && !provider.isPlugin) {
       const ollama = await detectOllama()
       if (!ollama.available) {
         continue
@@ -238,7 +241,31 @@ export async function sendWithFallback(request: ProviderRequest): Promise<Provid
     }
 
     try {
-      const response = await sendToProvider(provider, request)
+      const { messages, wasCompressed, savedTokens } = 
+        await compressIfNeeded(request.messages, provider.contextWindow || 8192)
+      
+      if (wasCompressed) {
+        logger.debug(`Token compression: saved ${savedTokens} tokens`)
+      }
+
+      let response: ProviderResponse
+      if (provider.isPlugin) {
+        const plugins = getProviderPlugins()
+        const plugin = plugins.find(p => p.manifest.name === provider.name)
+        if (!plugin || !plugin.module.complete) {
+          throw new Error(`Plugin ${provider.name} is missing complete() function`)
+        }
+        const result = await plugin.module.complete({ ...request, messages })
+        response = {
+          content: result.content,
+          provider: provider.name,
+          model: 'plugin-model',
+          tokensUsed: result.tokensUsed || Math.ceil(result.content.length / 4),
+          isLocal: true
+        }
+      } else {
+        response = await sendToProvider(provider, { ...request, messages })
+      }
 
       // Track switch
       if (lastProvider && lastProvider !== provider.name) {

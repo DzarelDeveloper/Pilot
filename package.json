@@ -1,9 +1,13 @@
 {
-  "name": "pilot-ai",
-  "version": "0.1.0",
+  "name": "pilot-ai-cli",
+  "version": "1.0.0",
   "description": "AI infrastructure platform — CLI untuk vibe coding yang auto-rotasi 9 provider AI gratis, tanpa kehilangan memory.",
   "type": "module",
   "main": "./dist/cli/index.js",
+  "files": [
+    "dist",
+    "bin"
+  ],
   "bin": {
     "pilot": "./bin/pilot.js"
   },
@@ -12,8 +16,10 @@
     "dev": "tsup --watch",
     "start": "node bin/pilot.js",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "lint": "eslint src/",
-    "format": "prettier --write \"src/**/*.{ts,tsx}\""
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@inkjs/ui": "^2.0.0",
@@ -31,6 +37,7 @@
     "@types/react": "^18.2.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
+    "@vitest/coverage-v8": "^1.0.0",
     "eslint": "^8.57.0",
     "prettier": "^3.0.0",
     "tsup": "^8.0.0",
@@ -41,5 +48,10 @@
     "node": ">=20.0.0"
   },
   "keywords": ["ai", "cli", "vibe-coding", "coding-assistant", "multi-provider"],
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Dzareldeveloper/Pilot.git"
+  },
+  "homepage": "https://github.com/Dzareldeveloper/Pilot#readme"
 }
