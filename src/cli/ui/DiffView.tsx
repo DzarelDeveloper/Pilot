@@ -32,7 +32,7 @@ function generateDiff(original: string, newContent: string): DiffChunk[] {
   
   while (origIdx < origLines.length || newIdx < newLines.length) {
     if (origIdx < origLines.length && newIdx < newLines.length && origLines[origIdx] === newLines[newIdx]) {
-      diffLines.push({ type: 'context', content: origLines[origIdx]!, origLineNum: origIdx + 1, newLineNum: newIdx + 1 })
+      diffLines.push({ type: 'context', content: origLines[origIdx] as string, origLineNum: origIdx + 1, newLineNum: newIdx + 1 })
       origIdx++
       newIdx++
       continue
@@ -54,20 +54,20 @@ function generateDiff(original: string, newContent: string): DiffChunk[] {
     
     if (resyncOrig !== -1 && resyncNew !== -1) {
       while (origIdx < resyncOrig) {
-        diffLines.push({ type: 'removed', content: origLines[origIdx]!, origLineNum: origIdx + 1, newLineNum: 0 })
+        diffLines.push({ type: 'removed', content: origLines[origIdx] as string, origLineNum: origIdx + 1, newLineNum: 0 })
         origIdx++
       }
       while (newIdx < resyncNew) {
-        diffLines.push({ type: 'added', content: newLines[newIdx]!, origLineNum: 0, newLineNum: newIdx + 1 })
+        diffLines.push({ type: 'added', content: newLines[newIdx] as string, origLineNum: 0, newLineNum: newIdx + 1 })
         newIdx++
       }
     } else {
       if (origIdx < origLines.length) {
-        diffLines.push({ type: 'removed', content: origLines[origIdx]!, origLineNum: origIdx + 1, newLineNum: 0 })
+        diffLines.push({ type: 'removed', content: origLines[origIdx] as string, origLineNum: origIdx + 1, newLineNum: 0 })
         origIdx++
       }
       if (newIdx < newLines.length) {
-        diffLines.push({ type: 'added', content: newLines[newIdx]!, origLineNum: 0, newLineNum: newIdx + 1 })
+        diffLines.push({ type: 'added', content: newLines[newIdx] as string, origLineNum: 0, newLineNum: newIdx + 1 })
         newIdx++
       }
     }
@@ -87,7 +87,7 @@ function generateDiff(original: string, newContent: string): DiffChunk[] {
     }
     
     if (nearbyChange) {
-      const line = diffLines[i]!
+      const line = diffLines[i] as { type: 'context' | 'added' | 'removed', content: string, origLineNum: number, newLineNum: number }
       currentChunk.push({
         type: line.type,
         content: line.content,

@@ -116,7 +116,7 @@ export async function executeStep(
       // We will compute simple diff internally
       let tmpCreated = false
       try {
-        const dryRunEdit = await editFile(absolutePath + '.tmp_pilot', newCode, projectPath)
+        await editFile(absolutePath + '.tmp_pilot', newCode, projectPath)
         tmpCreated = true
 
         const approved = await hooks.onRequestDiffApproval(step.file, original, newCode)

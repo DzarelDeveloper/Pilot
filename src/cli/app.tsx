@@ -11,6 +11,10 @@ import { sendWithFallback, getLastSwitch, clearLastSwitch } from '../router/fall
 import { getOrCreateSession, appendMessage, buildContext } from '../memory/index.js'
 import { detectIntent } from '../utils/detectIntent.js'
 import { CodeApp } from './commands/code.js'
+import { ExplainApp } from './commands/explain.js'
+import { FixApp } from './commands/fix.js'
+import { ReviewApp } from './commands/review.js'
+import { UndoApp } from './commands/undo.js'
 import { GoodbyeScreen } from './ui/GoodbyeScreen.js'
 import type { PilotConfig, ProvidersConfig } from '../config/types.js'
 import type { Message } from '../memory/types.js'
@@ -27,6 +31,10 @@ type AppPhase =
   | 'repl-status'
   | 'repl-help'
   | 'repl-processing'
+  | 'repl-explain'
+  | 'repl-fix'
+  | 'repl-review'
+  | 'repl-undo'
   | 'coding'
   | 'goodbye'
 
@@ -72,7 +80,7 @@ interface SelectItem {
   desc?: string
 }
 
-function CustomSelect({ items, onSelect }: { items: SelectItem[], onSelect: (val: string) => void }) {
+function CustomSelect({ items, onSelect }: { items: SelectItem[], onSelect: (val: string) => void }): React.ReactElement {
   const [cursor, setCursor] = useState(0)
 
   useInput((_input, key) => {
@@ -124,12 +132,12 @@ export function PilotApp(): React.ReactElement {
   const [terminalWidth, setTerminalWidth] = useState(stdout.columns || 80)
 
   useEffect(() => {
-    const onResize = () => {
+    const onResize = (): void => {
       setTerminalHeight(stdout.rows || 24)
       setTerminalWidth(stdout.columns || 80)
     }
     stdout.on('resize', onResize)
-    return () => {
+    return (): void => {
       stdout.removeListener('resize', onResize)
     }
   }, [stdout])
@@ -140,6 +148,7 @@ export function PilotApp(): React.ReactElement {
   const [isProcessing, setIsProcessing] = useState(false)
   const [switchNotice, setSwitchNotice] = useState<string | null>(null)
   const [activePrompt, setActivePrompt] = useState('')
+  const [slashArgs, setSlashArgs] = useState('')
 
   // Session stats (for goodbye screen)
   const [sessionStartTime] = useState<number>(Date.now())
@@ -315,7 +324,7 @@ export function PilotApp(): React.ReactElement {
          setOllamaSubState('select-download') // let them retry
       }
     }
-    if (phase === 'repl-status' || phase === 'repl-help') {
+    if (phase === 'repl-status' || phase === 'repl-help' || phase === 'repl-explain' || phase === 'repl-fix' || phase === 'repl-review' || phase === 'repl-undo') {
       setPhase('repl')
     }
   })
@@ -406,6 +415,14 @@ export function PilotApp(): React.ReactElement {
     [currentProviderIdx, waitingForAccountId, tempApiKey, checkOllama],
   )
 
+  function parseInput(input: string): { type: 'slash', command: string, args: string } | { type: 'prompt', content: string } {
+    if (input.startsWith('/')) {
+      const [cmd, ...args] = input.slice(1).split(' ')
+      return { type: 'slash', command: cmd, args: args.join(' ') }
+    }
+    return { type: 'prompt', content: input }
+  }
+
   const handleReplSubmit = useCallback(
     (value: string) => {
       const trimmed = value.trim()
@@ -413,33 +430,52 @@ export function PilotApp(): React.ReactElement {
 
       if (!trimmed) return
 
-      if (trimmed === '/exit' || trimmed === '/quit') {
-        setPhase('goodbye')
-        return
-      }
+      const parsed = parseInput(trimmed)
 
-      if (trimmed === '/status') {
-        setPhase('repl-status')
-        return
-      }
-
-      if (trimmed === '/help') {
-        setPhase('repl-help')
-        return
-      }
-
-      if (trimmed === '/new') {
-        setChatLog([{ role: 'info', content: '◆ Session baru dimulai.' }])
-        return
-      }
-
-      if (trimmed === '/setup') {
-        setCurrentProviderIdx(0)
-        setConfiguredNames([])
-        setWaitingForAccountId(false)
-        setTempApiKey('')
-        setPhase('setup-cloud')
-        return
+      if (parsed.type === 'slash') {
+        switch (parsed.command) {
+          case 'explain':
+            setSlashArgs(parsed.args)
+            setPhase('repl-explain')
+            return
+          case 'fix':
+            setSlashArgs(parsed.args)
+            setPhase('repl-fix')
+            return
+          case 'review':
+            setPhase('repl-review')
+            return
+          case 'undo':
+            setPhase('repl-undo')
+            return
+          case 'help':
+            setPhase('repl-help')
+            return
+          case 'status':
+            setPhase('repl-status')
+            return
+          case 'setup':
+            setCurrentProviderIdx(0)
+            setConfiguredNames([])
+            setWaitingForAccountId(false)
+            setTempApiKey('')
+            setPhase('setup-cloud')
+            return
+          case 'new':
+            setChatLog([{ role: 'info', content: '◆ Session baru dimulai.' }])
+            return
+          case 'exit':
+          case 'quit':
+            setPhase('goodbye')
+            return
+          default:
+            setChatLog((prev) => [
+              ...prev,
+              { role: 'user', content: trimmed },
+              { role: 'info', content: 'Command tidak dikenal. Ketik /help untuk daftar command.' }
+            ])
+            return
+        }
       }
 
       const intent = detectIntent(trimmed)
@@ -491,7 +527,7 @@ export function PilotApp(): React.ReactElement {
           ])
           setRequestCount((c) => c + 1)
           if (result.provider && !usedProviderNames.includes(result.provider)) {
-            setUsedProviderNames((prev) => [...prev, result.provider!])
+            setUsedProviderNames((prev) => [...prev, result.provider as string])
           }
           setIsProcessing(false)
         })
@@ -512,7 +548,7 @@ export function PilotApp(): React.ReactElement {
       const timer = setTimeout(() => {
         setPhase('repl')
       }, 2500)
-      return () => clearTimeout(timer)
+      return (): void => clearTimeout(timer)
     }
     return undefined
   }, [phase])
@@ -781,11 +817,22 @@ export function PilotApp(): React.ReactElement {
       <Box flexDirection="column">
         <Text color="cyan" bold>◆ Help — Slash Commands</Text>
         <Text color="dim">{'─'.repeat(40)}</Text>
-        <Text color="cyan">/status  <Text color="dim">Status semua provider</Text></Text>
-        <Text color="cyan">/setup   <Text color="dim">Setup / tambah API key baru</Text></Text>
-        <Text color="cyan">/new     <Text color="dim">Mulai session baru</Text></Text>
-        <Text color="cyan">/help    <Text color="dim">Tampilkan bantuan ini</Text></Text>
-        <Text color="cyan">/exit    <Text color="dim">Keluar dari Pilot</Text></Text>
+        <Text> </Text>
+        <Text color="white" bold>  Agentic Commands</Text>
+        <Text color="cyan">/explain {'<file>'}  <Text color="dim">Jelaskan file / kode</Text></Text>
+        <Text color="cyan">/fix {'<error>'}     <Text color="dim">Analisis & perbaiki error</Text></Text>
+        <Text color="cyan">/review          <Text color="dim">Review perubahan (git diff)</Text></Text>
+        <Text color="cyan">/undo            <Text color="dim">Batalkan eksekusi terakhir</Text></Text>
+        <Text> </Text>
+        <Text color="white" bold>  Utility Commands</Text>
+        <Text color="cyan">/status          <Text color="dim">Status semua provider</Text></Text>
+        <Text color="cyan">/setup           <Text color="dim">Setup / tambah API key baru</Text></Text>
+        <Text color="cyan">/new             <Text color="dim">Mulai session baru</Text></Text>
+        <Text color="cyan">/help            <Text color="dim">Tampilkan bantuan ini</Text></Text>
+        <Text color="cyan">/exit            <Text color="dim">Keluar dari Pilot</Text></Text>
+        <Text> </Text>
+        <Text color="dim">{'─'.repeat(40)}</Text>
+        <Text color="dim">Tips: Ketik langsung untuk chat, atau deskripsikan tugas coding untuk memulai vibe coding.</Text>
       </Box>
     )
     inputContent = (
@@ -794,7 +841,45 @@ export function PilotApp(): React.ReactElement {
         <Text color="dim">Tekan tombol apapun untuk kembali...</Text>
       </Box>
     )
-  } else if (phase === 'repl' || phase === 'repl-processing') {
+  } else if (phase === 'repl-fix') {
+    middleContent = (
+      <Box flexDirection="column" flexGrow={1}>
+        <Banner columns={terminalWidth} />
+        <FixApp 
+          errorMsg={slashArgs} 
+          projectPath={process.cwd()} 
+          onDone={(summary) => {
+            setChatLog(prev => [
+              ...prev, 
+              { role: 'user', content: `/fix ${slashArgs}` },
+              { role: 'assistant', content: summary }
+            ])
+            setPhase('repl')
+            setSlashArgs('')
+          }} 
+        />
+      </Box>
+    )
+    inputContent = null
+  } else if (phase === 'repl-undo') {
+    middleContent = (
+      <Box flexDirection="column" flexGrow={1}>
+        <Banner columns={terminalWidth} />
+        <UndoApp 
+          projectPath={process.cwd()} 
+          onDone={(finalText) => {
+            setChatLog(prev => [
+              ...prev, 
+              { role: 'user', content: `/undo` },
+              { role: 'assistant', content: finalText }
+            ])
+            setPhase('repl')
+          }} 
+        />
+      </Box>
+    )
+    inputContent = null
+  } else if (phase === 'repl' || phase === 'repl-processing' || phase === 'repl-explain' || phase === 'repl-review') {
     const visibleLog = chatLog.slice(-20) // Show up to 20 messages
     middleContent = (
       <Box flexDirection="column" justifyContent="flex-end" flexGrow={1}>
@@ -823,10 +908,40 @@ export function PilotApp(): React.ReactElement {
             </Box>
           )
         })}
+        {phase === 'repl-explain' && (
+          <ExplainApp 
+            input={slashArgs} 
+            projectPath={process.cwd()}
+            onDone={(finalText) => {
+               setChatLog(prev => [
+                  ...prev, 
+                  { role: 'user', content: `/explain ${slashArgs}` },
+                  { role: 'assistant', content: finalText }
+               ])
+               setPhase('repl')
+               setSlashArgs('')
+            }}
+          />
+        )}
+        {phase === 'repl-review' && (
+          <ReviewApp 
+            projectPath={process.cwd()}
+            onDone={(finalText) => {
+               setChatLog(prev => [
+                  ...prev, 
+                  { role: 'user', content: `/review` },
+                  { role: 'assistant', content: finalText }
+               ])
+               setPhase('repl')
+            }}
+          />
+        )}
       </Box>
     )
 
-    if (isProcessing) {
+    if (phase === 'repl-explain' || phase === 'repl-review') {
+      inputContent = null
+    } else if (isProcessing) {
       inputContent = (
         <Box>
           <Text color="cyan" bold>{"> "}</Text>
@@ -869,7 +984,7 @@ export function PilotApp(): React.ReactElement {
   useEffect(() => {
     if (phase === 'goodbye') {
       const timer = setTimeout(() => process.exit(0), 1500)
-      return () => clearTimeout(timer)
+      return (): void => clearTimeout(timer)
     }
   }, [phase])
 

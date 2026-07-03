@@ -8,7 +8,6 @@ import {
   listAllSessions,
 } from './store.js'
 import {
-  estimateTokens as _estimateTokens,
   estimateMessagesTokens,
   buildSystemPrompt,
 } from './compressor.js'
@@ -45,7 +44,7 @@ export function recordFileAction(
 
 export function buildContext(
   projectPath: string,
-  contextWindow: number = 128_000,
+  _contextWindow: number = 128_000,
 ): Message[] {
   const session = loadSession(projectPath)
   const project = loadProjectMemory(projectPath)

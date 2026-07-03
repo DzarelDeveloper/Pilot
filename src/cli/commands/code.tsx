@@ -10,6 +10,7 @@ import type { ThinkResult, PlanResult } from '../../agent/types.js'
 import { getOrCreateSession, appendMessage } from '../../memory/index.js'
 import { updateAfterExecute } from '../../memory/projectMemory.js'
 import { getLastSwitch } from '../../router/fallback.js'
+import { backupForUndo } from '../../agent/undo.js'
 
 type AppState = 
   | 'thinking' 
@@ -44,7 +45,7 @@ export function CodeApp({ prompt, projectPath, onDone }: { prompt: string; proje
   const resolveExecutionApproval = useRef<(value: boolean | 'quit') => void>()
 
   useEffect(() => {
-    async function run() {
+    async function run(): Promise<void> {
       try {
         const session = getOrCreateSession(projectPath)
         const startTime = Date.now()
@@ -94,7 +95,8 @@ export function CodeApp({ prompt, projectPath, onDone }: { prompt: string; proje
           process.exit(0)
         }
 
-        // Phase 4: Execute
+        // Phase 4: Backup for undo, then Execute
+        await backupForUndo(planRes.steps, projectPath, planRes.summary)
         setState('executing')
         let i = 0
         for (const step of planRes.steps) {
@@ -103,7 +105,7 @@ export function CodeApp({ prompt, projectPath, onDone }: { prompt: string; proje
             onProgressUpdate: (update) => {
               setProgressSteps(prev => {
                 const next = [...prev]
-                next[i] = { ...next[i]!, ...update }
+                next[i] = { ...(next[i] as ProgressStep), ...update }
                 return next
               })
             },

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { Box, Text } from 'ink'
-import { runUndo } from '../../agent/undo.js'
+import { reviewChanges } from '../../agent/review.js'
 
-export function UndoApp({
+export function ReviewApp({
   projectPath,
   onDone
 }: {
@@ -11,14 +11,15 @@ export function UndoApp({
 }): React.ReactElement {
   const [text, setText] = useState('')
   const [isDone, setIsDone] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
     let mounted = true
     async function run(): Promise<void> {
       try {
-        await runUndo(projectPath, (msg) => {
+        await reviewChanges(projectPath, (chunk) => {
           if (mounted) {
-            setText(prev => prev + msg)
+            setText(prev => prev + chunk)
           }
         })
         if (mounted) {
@@ -26,7 +27,7 @@ export function UndoApp({
         }
       } catch (err) {
         if (mounted) {
-          setText(prev => prev + `\nError: ${err instanceof Error ? err.message : String(err)}`)
+          setErrorMsg(err instanceof Error ? err.message : String(err))
           setIsDone(true)
         }
       }
@@ -37,13 +38,17 @@ export function UndoApp({
 
   useEffect(() => {
     if (isDone) {
-      onDone(text)
+      if (errorMsg) {
+         onDone(`Error: ${errorMsg}`)
+      } else {
+         onDone(text)
+      }
     }
-  }, [isDone, text, onDone])
+  }, [isDone, errorMsg, text, onDone])
 
   return (
     <Box flexDirection="column" marginTop={1}>
-      <Text color="yellow" bold>◆ Undo</Text>
+      <Text color="cyan" bold>Pilot: </Text>
       <Text color="white">{text}</Text>
     </Box>
   )

@@ -3,7 +3,7 @@ import { Box, Text, useInput } from 'ink'
 import { Spinner } from './Spinner.js'
 import { PlanView } from './PlanView.js'
 import { thinkPhase, planPhase, executeStep } from '../../agent/index.js'
-import type { ThinkResult, PlanResult } from '../../agent/types.js'
+import type { PlanResult } from '../../agent/types.js'
 import { getOrCreateSession, appendMessage } from '../../memory/index.js'
 import { updateAfterExecute } from '../../memory/projectMemory.js'
 
@@ -12,7 +12,7 @@ type AppState = 'thinking' | 'planning' | 'approval' | 'executing' | 'done' | 'e
 export function OneShotAgent({ prompt, projectPath }: { prompt: string; projectPath: string }): React.ReactElement | null {
   const [state, setState] = useState<AppState>('thinking')
   const [errorMsg, setErrorMsg] = useState('')
-  const [thinkResult, setThinkResult] = useState<ThinkResult | null>(null)
+  // const [thinkResult, setThinkResult] = useState<ThinkResult | null>(null)
   const [planResult, setPlanResult] = useState<PlanResult | null>(null)
   const [progressSteps, setProgressSteps] = useState<{id: number, file: string, action: string, status: string, detail?: string}[]>([])
   const [summaryData, setSummaryData] = useState<{fileCount: number, duration: string, provider: string} | null>(null)
@@ -20,19 +20,18 @@ export function OneShotAgent({ prompt, projectPath }: { prompt: string; projectP
   const resolveApproval = useRef<(value: boolean | 'edit') => void>()
 
   useEffect(() => {
-    async function run() {
+    async function run(): Promise<void> {
       try {
         const session = getOrCreateSession(projectPath)
         const startTime = Date.now()
 
         // THINK
-        setState('thinking')
-        const thinkRes = await thinkPhase(session, prompt)
-        setThinkResult(thinkRes)
+        // Phase 1: Think
+        const _thinkResult = await thinkPhase(session, prompt)
 
         // PLAN
         setState('planning')
-        const planRes = await planPhase(session, prompt, thinkRes)
+        const planRes = await planPhase(session, prompt, _thinkResult)
         setPlanResult(planRes)
 
         setProgressSteps(planRes.steps.map(s => ({
@@ -60,7 +59,7 @@ export function OneShotAgent({ prompt, projectPath }: { prompt: string; projectP
             onProgressUpdate: (update) => {
               setProgressSteps(prev => {
                 const next = [...prev]
-                next[i] = { ...next[i]!, ...update }
+                next[i] = { ...(next[i] as {id: number, file: string, action: string, status: string, detail?: string}), ...update }
                 return next
               })
             },

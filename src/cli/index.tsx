@@ -12,15 +12,7 @@ if (args.length === 0) {
 } else {
   const command = args[0]
   
-  if (command === 'explain') {
-    const { runExplain } = await import('./commands/explain.js')
-    await runExplain(args.slice(1))
-    process.exit(0)
-  } else if (command === 'fix') {
-    const { runFix } = await import('./commands/fix.js')
-    await runFix(args.slice(1))
-    process.exit(0)
-  } else if (command === 'plugin') {
+  if (command === 'plugin') {
     const { runPlugin } = await import('./commands/plugin.js')
     await runPlugin(args.slice(1))
     process.exit(0)
@@ -39,7 +31,9 @@ if (args.length === 0) {
     // ─── One-shot mode: process and exit ──────────────────────────────────
     const prompt = args.join(' ')
     
+    // eslint-disable-next-line no-console
     console.log(chalk.cyan('◆ Pilot') + chalk.dim(' v0.2.0'))
+    // eslint-disable-next-line no-console
     console.log(chalk.dim('─'.repeat(40)))
     
     const intent = detectIntent(prompt)

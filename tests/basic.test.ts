@@ -1,8 +1,40 @@
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, vi, beforeEach, afterEach } from "vitest";
 import { detectIntent } from "../src/utils/detectIntent.js";
 import { getResolvedProviders } from "../src/router/providers/index.js";
 import { createNewSession } from "../src/memory/store.js";
 import fs from "fs";
+import os from "os";
+import path from "path";
+
+const TEST_DIR = path.join(os.tmpdir(), `pilot-test-${Date.now()}`);
+
+vi.mock("os", async () => {
+  const actual = await vi.importActual<typeof import("os")>("os");
+  return {
+    ...actual,
+    default: { ...actual, homedir: () => TEST_DIR },
+    homedir: () => TEST_DIR,
+  };
+});
+
+vi.mock("node:os", async () => {
+  const actual = await vi.importActual<typeof import("node:os")>("node:os");
+  return {
+    ...actual,
+    default: { ...actual, homedir: () => TEST_DIR },
+    homedir: () => TEST_DIR,
+  };
+});
+
+import { beforeAll, afterAll } from "vitest";
+
+beforeAll(() => {
+  fs.mkdirSync(TEST_DIR, { recursive: true });
+});
+
+afterAll(() => {
+  fs.rmSync(TEST_DIR, { recursive: true, force: true });
+});
 
 describe("detectIntent", () => {
   test("harus mendeteksi intent coding", () => {

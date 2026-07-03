@@ -1,24 +1,27 @@
 import React, { useState, useEffect } from 'react'
 import { Box, Text } from 'ink'
-import { runUndo } from '../../agent/undo.js'
+import { explainCode } from '../../agent/explain.js'
 
-export function UndoApp({
+export function ExplainApp({
+  input,
   projectPath,
   onDone
 }: {
+  input: string
   projectPath: string
   onDone: (finalText: string) => void
 }): React.ReactElement {
   const [text, setText] = useState('')
   const [isDone, setIsDone] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
     let mounted = true
     async function run(): Promise<void> {
       try {
-        await runUndo(projectPath, (msg) => {
+        await explainCode(input, projectPath, (chunk) => {
           if (mounted) {
-            setText(prev => prev + msg)
+            setText(prev => prev + chunk)
           }
         })
         if (mounted) {
@@ -26,24 +29,29 @@ export function UndoApp({
         }
       } catch (err) {
         if (mounted) {
-          setText(prev => prev + `\nError: ${err instanceof Error ? err.message : String(err)}`)
+          setErrorMsg(err instanceof Error ? err.message : String(err))
           setIsDone(true)
         }
       }
     }
     run()
     return (): void => { mounted = false }
-  }, [projectPath])
+  }, [input, projectPath])
 
   useEffect(() => {
     if (isDone) {
-      onDone(text)
+      if (errorMsg) {
+         onDone(`Error: ${errorMsg}`)
+      } else {
+         onDone(text)
+      }
     }
-  }, [isDone, text, onDone])
+  }, [isDone, errorMsg, text, onDone])
 
   return (
     <Box flexDirection="column" marginTop={1}>
-      <Text color="yellow" bold>◆ Undo</Text>
+      <Text color="cyan" bold>Pilot: </Text>
+      <Text color="dim">◆ Menjelaskan {input || 'kode'}...</Text>
       <Text color="white">{text}</Text>
     </Box>
   )

@@ -1,9 +1,12 @@
+/* eslint-disable no-console */
 import fs from 'node:fs'
 import path from 'node:path'
 import chalk from 'chalk'
 import { getPluginsDir, loadPlugins } from '../../plugins/manager.js'
 
-export async function runPlugin(args: string[]) {
+import type { PluginManifest } from '../../plugins/manager.js'
+
+export async function runPlugin(args: string[]): Promise<void> {
   if (args.length === 0) {
     printHelp()
     return
@@ -31,7 +34,7 @@ export async function runPlugin(args: string[]) {
   }
 }
 
-function printHelp() {
+function printHelp(): void {
   console.log(chalk.cyan('◆ Pilot Plugin System'))
   console.log(chalk.dim('─'.repeat(40)))
   console.log('Commands:')
@@ -40,7 +43,7 @@ function printHelp() {
   console.log(`  ${chalk.green('remove')} <nama-plugin>  Hapus plugin terpasang`)
 }
 
-async function handleList() {
+async function handleList(): Promise<void> {
   console.log(chalk.cyan('◆ Plugin Terpasang'))
   console.log(chalk.dim('─'.repeat(40)))
   
@@ -61,7 +64,7 @@ async function handleList() {
   }
 }
 
-async function handleAdd(sourcePath: string) {
+async function handleAdd(sourcePath: string): Promise<void> {
   const absoluteSource = path.resolve(process.cwd(), sourcePath)
   
   if (!fs.existsSync(absoluteSource)) {
@@ -76,16 +79,16 @@ async function handleAdd(sourcePath: string) {
   }
   
   let manifestStr = ''
-  let manifest: any = null
+  let manifest: PluginManifest | null = null
   try {
     manifestStr = fs.readFileSync(manifestPath, 'utf-8')
-    manifest = JSON.parse(manifestStr)
+    manifest = JSON.parse(manifestStr) as PluginManifest
   } catch (err) {
     console.error(chalk.red('✗ Error: ') + 'Gagal membaca/parsing plugin.json')
     return
   }
   
-  if (!manifest.name) {
+  if (!manifest?.name) {
     console.error(chalk.red('✗ Error: ') + 'Plugin manifest harus memiliki properti "name".')
     return
   }
@@ -94,19 +97,19 @@ async function handleAdd(sourcePath: string) {
   const targetDir = path.join(pluginsDir, manifest.name)
   
   if (fs.existsSync(targetDir)) {
-    console.log(chalk.yellow(`⚠ Plugin '${manifest.name}' sudah terpasang. Menimpa ulang...`))
+    console.log(chalk.yellow(`⚠ Plugin '${manifest?.name}' sudah terpasang. Menimpa ulang...`))
     fs.rmSync(targetDir, { recursive: true, force: true })
   }
   
   try {
     fs.cpSync(absoluteSource, targetDir, { recursive: true })
-    console.log(chalk.green(`✓ Plugin '${manifest.name}' berhasil di-install!`))
+    console.log(chalk.green(`✓ Plugin '${manifest?.name}' berhasil di-install!`))
   } catch (err) {
     console.error(chalk.red('✗ Error: ') + 'Gagal meng-copy file plugin.')
   }
 }
 
-async function handleRemove(pluginName: string) {
+async function handleRemove(pluginName: string): Promise<void> {
   const pluginsDir = getPluginsDir()
   const targetDir = path.join(pluginsDir, pluginName)
   

@@ -36,17 +36,17 @@ export interface ProjectKnowledge {
   notes: string[]
 }
 
-const getProjectsDir = () => {
+const getProjectsDir = (): string => {
   const dir = path.join(os.homedir(), '.pilot', 'projects')
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
   return dir
 }
 
-const getProjectHash = (projectPath: string) => {
+const getProjectHash = (projectPath: string): string => {
   return crypto.createHash('md5').update(projectPath).digest('hex').substring(0, 8)
 }
 
-const getKnowledgePath = (projectPath: string) => {
+const getKnowledgePath = (projectPath: string): string => {
   return path.join(getProjectsDir(), `${getProjectHash(projectPath)}.json`)
 }
 
@@ -121,7 +121,7 @@ export async function learnFromProject(projectPath: string): Promise<ProjectKnow
       else if (deps['jest']) knowledge.techStack.testRunner = 'jest'
 
       if (deps['tailwindcss']) knowledge.techStack.styling = 'tailwindcss'
-    } catch {}
+    } catch { /* ignore */ }
   } else if (fs.existsSync(path.join(projectPath, 'requirements.txt')) || fs.existsSync(path.join(projectPath, 'pyproject.toml'))) {
     knowledge.techStack.language = 'python'
     knowledge.techStack.packageManager = 'pip'
@@ -175,7 +175,7 @@ export async function learnFromProject(projectPath: string): Promise<ProjectKnow
       if (singleQuoteCount > doubleQuoteCount) knowledge.conventions.quotes = 'single'
       else knowledge.conventions.quotes = 'double'
       
-    } catch {}
+    } catch { /* ignore */ }
   }
 
   await saveProjectKnowledge(knowledge)

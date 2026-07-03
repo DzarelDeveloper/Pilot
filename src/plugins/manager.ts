@@ -13,7 +13,7 @@ export interface PluginManifest {
 
 export interface PluginInstance {
   manifest: PluginManifest
-  module: any
+  module: { run?: (args: string[]) => Promise<void>, [key: string]: unknown }
   dirPath: string
 }
 
